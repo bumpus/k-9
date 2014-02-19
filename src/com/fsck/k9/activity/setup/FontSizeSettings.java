@@ -19,7 +19,6 @@ public class FontSizeSettings extends K9PreferenceActivity {
     /*
      * Keys of the preferences defined in res/xml/font_preferences.xml
      */
-    private static final String PREFERENCE_SCREEN_MESSAGE_VIEW_FONTS = "message_view_fonts";
     private static final String PREFERENCE_ACCOUNT_NAME_FONT = "account_name_font";
     private static final String PREFERENCE_ACCOUNT_DESCRIPTION_FONT = "account_description_font";
     private static final String PREFERENCE_FOLDER_NAME_FONT = "folder_name_font";
@@ -34,7 +33,6 @@ public class FontSizeSettings extends K9PreferenceActivity {
     private static final String PREFERENCE_MESSAGE_VIEW_ADDITIONAL_HEADERS_FONT = "message_view_additional_headers_font";
     private static final String PREFERENCE_MESSAGE_VIEW_SUBJECT_FONT = "message_view_subject_font";
     private static final String PREFERENCE_MESSAGE_VIEW_DATE_FONT = "message_view_date_font";
-    private static final String PREFERENCE_MESSAGE_VIEW_CONTENT_FONT = "message_view_content_font";
     private static final String PREFERENCE_MESSAGE_VIEW_CONTENT_FONT_SLIDER = "message_view_content_font_slider";
     private static final String PREFERENCE_MESSAGE_COMPOSE_INPUT_FONT = "message_compose_input_font";
 
@@ -52,7 +50,6 @@ public class FontSizeSettings extends K9PreferenceActivity {
     private ListPreference mMessageViewAdditionalHeaders;
     private ListPreference mMessageViewSubject;
     private ListPreference mMessageViewDate;
-    private ListPreference mMessageViewContent;
     private SliderPreference mMessageViewContentSlider;
     private ListPreference mMessageComposeInput;
 
@@ -121,16 +118,11 @@ public class FontSizeSettings extends K9PreferenceActivity {
         mMessageViewDate = setupListPreference(
                                PREFERENCE_MESSAGE_VIEW_DATE_FONT,
                                Integer.toString(fontSizes.getMessageViewDate()));
-        mMessageViewContent = setupListPreference(
-                                  PREFERENCE_MESSAGE_VIEW_CONTENT_FONT,
-                                  Integer.toString(fontSizes.getMessageViewContentAsInt()));
 
         mMessageViewContentSlider = (SliderPreference) findPreference(
                                   PREFERENCE_MESSAGE_VIEW_CONTENT_FONT_SLIDER);
-        // Scale to [0, 1]
-        mMessageViewContentSlider.setValue((float)
-                                  (fontSizes.getMessageViewContentAsPercent() - FONT_PERCENT_MIN) /
-                                  (FONT_PERCENT_MAX - FONT_PERCENT_MIN));
+
+        mMessageViewContentSlider.setValue(scaleFromInt(fontSizes.getMessageViewContentAsPercent()));
         mMessageViewContentSlider.setOnPreferenceChangeListener(
             new Preference.OnPreferenceChangeListener() {
                 // Show the preference value in the preference summary field.
@@ -138,9 +130,7 @@ public class FontSizeSettings extends K9PreferenceActivity {
                 public boolean onPreferenceChange(final Preference preference, final Object newValue) {
                     final SliderPreference slider = (SliderPreference) preference;
                     final Float value = (Float) newValue;
-                    // Scale from [0, 1]
-                    slider.setSummary(String.valueOf((int)(FONT_PERCENT_MIN +
-                                      value * (FONT_PERCENT_MAX - FONT_PERCENT_MIN))) + "%");
+                    slider.setSummary(String.valueOf(scaleToInt(value) + "%"));
                     slider.setDialogTitle(slider.getTitle() + " " + slider.getSummary());
                     if (slider.getDialog() != null) {
                         slider.getDialog().setTitle(slider.getDialogTitle());
@@ -151,14 +141,6 @@ public class FontSizeSettings extends K9PreferenceActivity {
         );
         mMessageViewContentSlider.getOnPreferenceChangeListener().onPreferenceChange(
                                   mMessageViewContentSlider, new Float(mMessageViewContentSlider.getValue()));
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            ((PreferenceGroup) findPreference(PREFERENCE_SCREEN_MESSAGE_VIEW_FONTS)).
-                removePreference(mMessageViewContent);
-        } else {
-            ((PreferenceGroup) findPreference(PREFERENCE_SCREEN_MESSAGE_VIEW_FONTS)).
-                removePreference(mMessageViewContentSlider);
-        }
 
         mMessageComposeInput = setupListPreference(
                 PREFERENCE_MESSAGE_COMPOSE_INPUT_FONT,
@@ -189,11 +171,7 @@ public class FontSizeSettings extends K9PreferenceActivity {
         fontSizes.setMessageViewAdditionalHeaders(Integer.parseInt(mMessageViewAdditionalHeaders.getValue()));
         fontSizes.setMessageViewSubject(Integer.parseInt(mMessageViewSubject.getValue()));
         fontSizes.setMessageViewDate(Integer.parseInt(mMessageViewDate.getValue()));
-        fontSizes.setMessageViewContent(Integer.parseInt(mMessageViewContent.getValue()));
-        // Scale from [0, 1]
-        fontSizes.setMessageViewContentAsPercent((int)(FONT_PERCENT_MIN +
-                                mMessageViewContentSlider.getValue() *
-                                (FONT_PERCENT_MAX - FONT_PERCENT_MIN)));
+        fontSizes.setMessageViewContentAsPercent(scaleToInt(mMessageViewContentSlider.getValue()));
 
         fontSizes.setMessageComposeInput(Integer.parseInt(mMessageComposeInput.getValue()));
 
@@ -201,6 +179,14 @@ public class FontSizeSettings extends K9PreferenceActivity {
         Editor editor = preferences.edit();
         fontSizes.save(editor);
         editor.commit();
+    }
+    
+    private int scaleToInt(float sliderValue) {
+        return (int) (FONT_PERCENT_MIN + sliderValue * (FONT_PERCENT_MAX - FONT_PERCENT_MIN));
+    }
+
+    private float scaleFromInt(int value) {
+        return (float) (value - FONT_PERCENT_MIN) / (FONT_PERCENT_MAX - FONT_PERCENT_MIN);
     }
 
     @Override
